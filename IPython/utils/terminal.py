@@ -84,10 +84,8 @@ elif sys.platform == 'win32':
 
         SetConsoleTitleW = ctypes.windll.kernel32.SetConsoleTitleW
         SetConsoleTitleW.argtypes = [ctypes.c_wchar_p]
-    
-        def _set_term_title(title):
-            """Set terminal title using ctypes to access the Win32 APIs."""
-            SetConsoleTitleW(title)
+        GetConsoleTitleW = ctypes.windll.kernel32.GetConsoleTitleW
+
     except ImportError:
         def _set_term_title(title):
             """Set terminal title using the 'title' command."""
@@ -103,6 +101,27 @@ elif sys.platform == 'win32':
             if ret:
                 # non-zero return code signals error, don't try again
                 ignore_termtitle = True
+    else:
+        class WinTerminalTitleManager(object):
+            def __init__(self):
+                self.previous_title = None
+
+            def set_title(self, title):
+                self.previous_title = GetConsoleTitleW()
+                SetConsoleTitleW(title) 
+
+            def restore_title(self):
+                SetConsoleTitleW(self.previous_title)
+
+
+        _title_manager = WinTerminalTitleManager()
+
+        def _set_term_title(title):
+            """Set terminal title using ctypes to access the Win32 APIs."""
+            _title_manager.set_title(title)
+
+        def _restore_term_title():
+            _title_manager.restore_title()
 
 
 def set_term_title(title):
